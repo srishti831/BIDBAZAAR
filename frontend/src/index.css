@@ -1,0 +1,178 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 232 40% 9%;
+    --foreground: 233 100% 96%;
+    --border: 232 38% 22%;
+    --input: 232 38% 22%;
+    --ring: 252 100% 68%;
+    --radius: 0.75rem;
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ink-900 text-fg font-sans antialiased;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(900px 500px at 8% -10%, rgba(124, 92, 255, 0.22), transparent 60%),
+      radial-gradient(700px 420px at 100% 0%, rgba(255, 92, 122, 0.12), transparent 60%),
+      radial-gradient(800px 500px at 50% 110%, rgba(46, 230, 166, 0.07), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  :focus-visible {
+    outline: 2px solid #a18bff;
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgba(124, 92, 255, 0.45);
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0d0f1f; }
+  ::-webkit-scrollbar-thumb { background: #343a6b; border-radius: 8px; }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-ink-600/70 bg-ink-800/80 backdrop-blur-sm;
+  }
+  .panel-pad { @apply p-5 sm:p-6; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+      transition duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-bid text-white shadow-[0_8px_24px_-8px_rgba(124,92,255,0.8)] hover:bg-bid-soft;
+  }
+  .btn-live { @apply btn bg-live text-white hover:bg-live-deep; }
+  .btn-win { @apply btn bg-win text-ink-950 hover:bg-win-deep; }
+  .btn-gold { @apply btn bg-gold text-ink-950 hover:bg-gold-deep; }
+  .btn-ghost {
+    @apply btn border border-ink-500 bg-ink-700/60 text-fg hover:border-bid-soft hover:bg-ink-600;
+  }
+  .btn-danger {
+    @apply btn border border-live/40 bg-live/10 text-live hover:bg-live hover:text-white;
+  }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-lg { @apply px-6 py-3.5 text-base; }
+
+  .label { @apply mb-1.5 block text-xs font-semibold text-dim; }
+  .hint { @apply mt-1 text-xs text-faint; }
+  .input {
+    @apply w-full rounded-xl border border-ink-500 bg-ink-900/70 px-3.5 py-2.5 text-sm text-fg
+      placeholder:text-faint transition focus:border-bid-soft focus:outline-none
+      focus:ring-2 focus:ring-bid/40 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  select.input { @apply appearance-none bg-no-repeat pr-9; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23A3A9D6' stroke-width='2' viewBox='0 0 24 24'><path d='m6 9 6 6 6-6'/></svg>"); background-position: right 0.75rem center; }
+  select.input option { background: #12152b; color: #edefff; }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-500 bg-ink-700/70 px-3 py-1 text-xs font-semibold text-dim
+      transition hover:border-bid-soft hover:text-fg;
+  }
+  .chip-on { @apply border-bid bg-bid/20 text-fg; }
+
+  .badge { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold; }
+  .badge-live { @apply badge bg-live/15 text-live; }
+  .badge-upcoming { @apply badge bg-sky/15 text-sky; }
+  .badge-ended { @apply badge bg-ink-600 text-dim; }
+  .badge-win { @apply badge bg-win/15 text-win; }
+  .badge-gold { @apply badge bg-gold/15 text-gold; }
+
+  .live-dot {
+    @apply inline-block h-2 w-2 rounded-full bg-live;
+    animation: pulse-dot 1.4s ease-out infinite;
+  }
+}
+
+@keyframes pulse-dot {
+  0% { box-shadow: 0 0 0 0 rgba(255, 92, 122, 0.7); }
+  100% { box-shadow: 0 0 0 9px rgba(255, 92, 122, 0); }
+}
+
+/* Price changed -> brief flash so people notice a new bid landed. */
+@keyframes price-flash {
+  0% { color: #2ee6a6; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.price-flash { animation: price-flash 0.7s ease-out; }
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track { animation: ticker 45s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise 0.4s ease-out both; }
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #181c38 25%, #232850 50%, #181c38 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .ticker-track { animation: none; }
+}
+
+/* ---- react-datepicker, dark ---- */
+.react-datepicker-wrapper { width: 100%; }
+.react-datepicker, .react-datepicker__header, .react-datepicker__time-container .react-datepicker__time,
+.react-datepicker__time-container, .react-datepicker__time-list {
+  background: #12152b !important;
+  border-color: #343a6b !important;
+  color: #edefff !important;
+  font-family: Figtree, system-ui, sans-serif;
+}
+.react-datepicker__current-month, .react-datepicker-time__header, .react-datepicker__day-name,
+.react-datepicker__day, .react-datepicker__time-list-item { color: #edefff !important; }
+.react-datepicker__day--disabled, .react-datepicker__time-list-item--disabled { color: #4a5080 !important; }
+.react-datepicker__day:hover, .react-datepicker__time-list-item:hover { background: #232850 !important; }
+.react-datepicker__day--selected, .react-datepicker__day--keyboard-selected,
+.react-datepicker__time-list-item--selected { background: #7c5cff !important; color: #fff !important; }
+.react-datepicker__day--today { font-weight: 800; }
+.react-datepicker__triangle { display: none; }
+.react-datepicker-popper { z-index: 60 !important; }
+
+/* ---- toasts ---- */
+.Toastify__toast { border-radius: 14px !important; font-family: Figtree, system-ui, sans-serif; }
