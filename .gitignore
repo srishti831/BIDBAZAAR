@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# secrets - NEVER commit these
+.env
+.env.*
+
+
+# build output & logs
+dist/
+*.log
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
