@@ -7,6 +7,8 @@ import { sendEmail } from "../utils/sendEmail.js";
 import {
   SNIPE_WINDOW_MS,
   getAuctionStatus,
+  SNIPE_EXTENSION_MS,
+  MAX_SNIPE_EXTENSIONS,
   getMinIncrement,
   getMinNextBid,
 } from "../utils/bidding.js";
@@ -122,15 +124,16 @@ export const placeBid = catchAsyncErrors(async (req, res, next) => {
 
   // Anti-sniping: a bid in the closing minutes pushes the end time back.
   const extended = await Auction.findOneAndUpdate(
-    {
-      _id: id,
-      endTime: { $gt: now, $lt: new Date(now.getTime() + SNIPE_WINDOW_MS) },
-    },
-    {
-      $set: { endTime: new Date(now.getTime() + SNIPE_WINDOW_MS) },
-      $inc: { extensions: 1 },
-    },
-    { new: true }
+  {
+    _id: id,
+    endTime: { $gt: now, $lt: new Date(now.getTime() + SNIPE_WINDOW_MS) },
+    extensions: { $lt: MAX_SNIPE_EXTENSIONS },
+  },
+  {
+    $set: { endTime: new Date(now.getTime() + SNIPE_EXTENSION_MS) },
+    $inc: { extensions: 1 },
+  },
+  { new: true }
   );
   if (extended) updated = extended;
 
