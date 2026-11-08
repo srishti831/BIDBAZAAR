@@ -273,9 +273,9 @@ const AuctionItem = () => {
             ) : (
               <ol className="divide-y divide-ink-600/60">
                 {bidders.slice(0, 25).map((bid, index) => {
-                  const mine = myId && String(bid.userId) === myId;
+                  const mine = !!bid.mine;
                   return (
-                    <li key={String(bid.userId)} className="flex items-center gap-3 py-3">
+                    <li key={`${bid.userName}-${index}`} className="flex items-center gap-3 py-3">
                       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold ${index === 0 ? "bg-win/20 text-win" : "bg-ink-600 text-dim"}`}>
                         {index === 0 ? <Crown size={14} /> : index + 1}
                       </span>
@@ -336,7 +336,7 @@ const AuctionItem = () => {
                   <Crown size={17} /> You're the highest bidder. Sit tight.
                 </p>
               )}
-              {status === "live" && isMember && !isLeader && myId && bidders.some((b) => String(b.userId) === myId) && (
+              {status === "live" && isMember && !isLeader && myId && bidders.some((b) => b.mine) && (
                 <p className="flex items-center gap-2 rounded-xl bg-live/15 px-3.5 py-3 text-sm font-semibold text-live">
                   <Hourglass size={17} /> You've been outbid. Raise your offer to get back in front.
                 </p>

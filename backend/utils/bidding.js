@@ -9,7 +9,19 @@ export const SNIPE_EXTENSION_MS = 2 * 60 * 1000;
 export const MAX_SNIPE_EXTENSIONS = 3;
 
 // How many upcoming/live auctions one seller may have at the same time.
-export const MAX_ACTIVE_LISTINGS = 5;
+// Kept low so a seller cannot pile up commission across many parallel sales
+// before the first one has been settled.
+export const MAX_ACTIVE_LISTINGS = 2;
+
+// Commission must be paid within this many days of the sale; after that the
+// seller is also blocked from bidding until it is cleared.
+export const COMMISSION_DUE_DAYS = 7;
+export const COMMISSION_DUE_MS = COMMISSION_DUE_DAYS * 24 * 60 * 60 * 1000;
+
+export const isCommissionOverdue = (user, now = Date.now()) =>
+  Number(user?.unpaidCommission) > 0 &&
+  !!user?.commissionDueAt &&
+  new Date(user.commissionDueAt).getTime() < now;
 
 // Minimum amount a new bid must beat the current bid by.
 export const getMinIncrement = (currentBid) => {

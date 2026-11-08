@@ -38,6 +38,18 @@ app.use(
   })
 );
 
+// CSRF guard: a browser always sends Origin on cross-site POST/PUT/DELETE.
+// Reject state-changing requests that come from a site we do not trust, even
+// if the login cookie would have been attached.
+app.use((req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+    return res.status(403).json({ success: false, message: "Origin not allowed." });
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -72,6 +84,13 @@ app.get("/health", (req, res) => {
 // Brute-force protection on auth endpoints (20 attempts / 15 min / IP).
 app.use("/api/v1/user/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
 app.use("/api/v1/user/register", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
+
+// Spam protection for the actions that cost money or storage.
+app.use("/api/v1/bid/place", rateLimit({ windowMs: 60 * 1000, max: 30 }));
+app.use("/api/v1/auctionitem/create", rateLimit({ windowMs: 60 * 60 * 1000, max: 20 }));
+app.use("/api/v1/commission/proof", rateLimit({ windowMs: 60 * 60 * 1000, max: 10 }));
+app.use("/api/v1/user/watchlist", rateLimit({ windowMs: 60 * 1000, max: 60 }));
+app.use("/api/v1/user/me", rateLimit({ windowMs: 60 * 1000, max: 120 }));
 
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/auctionitem", auctionItemRouter);

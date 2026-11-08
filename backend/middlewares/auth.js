@@ -20,6 +20,10 @@ export const isAuthenticated = catchAsyncErrors(async (req, res, next) => {
   if (!user) {
     return next(new ErrorHandler("User no longer exists.", 401));
   }
+  // A password change logs out every older session.
+  if (user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
+    return next(new ErrorHandler("Session expired. Please log in again.", 401));
+  }
   req.user = user;
   next();
 });
@@ -32,7 +36,9 @@ export const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
       const user = await User.findById(decoded.id);
-      if (user) req.user = user;
+      if (user && !(user.passwordChangedAt && decoded.iat * 1000 < user.passwordChangedAt.getTime())) {
+        req.user = user;
+      }
     }
   } catch {
     /* invalid/expired token -> treat as a guest */

@@ -3,6 +3,14 @@ import ErrorHandler from "../middlewares/error.js";
 import { PaymentProof } from "../models/commissionProofSchema.js";
 import { User } from "../models/userSchema.js";
 import { v2 as cloudinary } from "cloudinary";
+import {
+  getAdminEmails,
+  getCommissionPaymentInfo,
+  hasCommissionPaymentDetails,
+  isDemoMode,
+} from "../utils/platformSettings.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import { isRealImage } from "../utils/imageCheck.js";
 
 export const COMMISSION_RATE = 0.05;
 
@@ -33,6 +41,24 @@ export const proofOfCommission = catchAsyncErrors(async (req, res, next) => {
     });
   }
 
+  // Money already submitted and waiting for review must not be counted twice.
+  const waiting = await PaymentProof.aggregate([
+    { $match: { userId: user._id, status: { $in: ["Pending", "Approved"] } } },
+    { $group: { _id: null, total: { $sum: "$amount" } } },
+  ]);
+  const awaitingReview = waiting[0]?.total || 0;
+  if (awaitingReview + amount > user.unpaidCommission + 0.009) {
+    const left = Math.max(0, user.unpaidCommission - awaitingReview);
+    return next(
+      new ErrorHandler(
+        left > 0
+          ? `You already have payments awaiting review. You can submit proof for at most ₹${left} more.`
+          : "Your earlier payment proof is still awaiting admin review. Please wait for it to be approved.",
+        400
+      )
+    );
+  }
+
   if (user.unpaidCommission < amount) {
     return next(
       new ErrorHandler(
@@ -43,7 +69,7 @@ export const proofOfCommission = catchAsyncErrors(async (req, res, next) => {
   }
 
   const allowedFormats = ["image/png", "image/jpeg", "image/webp"];
-  if (!allowedFormats.includes(proof.mimetype)) {
+  if (!allowedFormats.includes(proof.mimetype) || !(await isRealImage(proof))) {
     return next(new ErrorHandler("ScreenShot format not supported.", 400));
   }
 
@@ -69,6 +95,21 @@ export const proofOfCommission = catchAsyncErrors(async (req, res, next) => {
     amount,
     comment,
   });
+  // Tell the admin(s) a proof is waiting (never fail the upload because of mail).
+  getAdminEmails()
+    .then((emails) =>
+      Promise.all(
+        emails.map((email) =>
+          sendEmail({
+            email,
+            subject: `New commission proof from ${user.userName} (₹${amount})`,
+            message: `${user.userName} (${user.email}) submitted a commission payment proof of ₹${amount}.\n\nNote: ${comment}\n\nOpen the BidBazaar dashboard > Payment proofs to review it.`,
+          }).catch((err) => console.error("Admin notification failed:", err.message))
+        )
+      )
+    )
+    .catch((err) => console.error("Admin notification failed:", err.message));
+
   res.status(201).json({
     success: true,
     message:
@@ -88,5 +129,17 @@ export const getMyCommission = catchAsyncErrors(async (req, res, next) => {
     unpaidCommission: user.unpaidCommission,
     commissionRate: COMMISSION_RATE,
     proofs,
+  });
+});
+
+// Where sellers must send the platform commission (set by the admin).
+export const getPaymentInfo = catchAsyncErrors(async (req, res, next) => {
+  const paymentInfo = await getCommissionPaymentInfo();
+  res.status(200).json({
+    success: true,
+    paymentInfo,
+    configured: hasCommissionPaymentDetails(paymentInfo),
+    demo: isDemoMode(),
+    dueDays: 7,
   });
 });

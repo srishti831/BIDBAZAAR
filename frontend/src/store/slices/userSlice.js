@@ -104,6 +104,7 @@ const save = (method, path, data, headers) => async (dispatch) => {
   dispatch(a.saving(true));
   try {
     const response = await axios({ method, url: `${API_URL}/user/${path}`, data, headers });
+    if (response.data.token) storeToken(response.data.token);
     if (response.data.user) dispatch(a.userUpdated(response.data.user));
     toast.success(response.data.message);
     return true;

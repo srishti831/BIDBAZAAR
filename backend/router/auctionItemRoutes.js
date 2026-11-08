@@ -20,7 +20,7 @@ router.post(
   addNewAuctionItem
 );
 
-router.get("/allitems", getAllItems);
+router.get("/allitems", optionalAuth, getAllItems);
 
 // Public: anyone with the link can look; only logged-in members can bid.
 router.get("/auction/:id", optionalAuth, getAuctionDetails);

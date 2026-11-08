@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { CheckCircle2, ImagePlus } from "lucide-react";
-import { getMyCommission, postCommissionProof } from "@/store/slices/commissionSlice";
+import { AlertTriangle, CheckCircle2, Copy, ImagePlus } from "lucide-react";
+import { getMyCommission, getPaymentInfo, postCommissionProof } from "@/store/slices/commissionSlice";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Page, PageHeader } from "@/custom-components/Page";
 
@@ -14,9 +14,68 @@ const STATUS_CLASS = {
   Rejected: "badge-live",
 };
 
+const copy = (text) => {
+  navigator.clipboard
+    ?.writeText(String(text))
+    .then(() => toast.success("Copied"))
+    .catch(() => toast.error("Could not copy"));
+};
+
+const Row = ({ label, value }) =>
+  value ? (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs text-faint">{label}</p>
+        <p className="num break-all font-semibold">{value}</p>
+      </div>
+      <button type="button" onClick={() => copy(value)} className="btn-ghost btn-sm shrink-0" aria-label={`Copy ${label}`}>
+        <Copy size={14} />
+      </button>
+    </div>
+  ) : null;
+
+const PayTo = ({ info, configured, amount }) => {
+  if (!info) return null;
+  if (!configured) {
+    return (
+      <div className="panel panel-pad mb-6 !border-gold/50">
+        <p className="flex items-start gap-2 text-sm text-gold">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          The admin has not added payment details yet. Please check back soon or contact support.
+        </p>
+      </div>
+    );
+  }
+  const upiLink = info.upiId
+    ? `upi://pay?pa=${encodeURIComponent(info.upiId)}&pn=${encodeURIComponent(info.upiName || "BidBazaar")}&am=${amount > 0 ? amount : ""}&cu=INR&tn=${encodeURIComponent("BidBazaar commission")}`
+    : null;
+  return (
+    <div className="panel panel-pad mb-6">
+      <h2 className="text-lg font-bold">Pay the commission to</h2>
+      <p className="mb-2 text-sm text-dim">Send the amount below, then upload the screenshot.</p>
+      <div className="divide-y divide-ink-600/60">
+        <Row label="UPI ID" value={info.upiId} />
+        <Row label="Name on UPI" value={info.upiName} />
+        <Row label="Account holder" value={info.bankAccountName} />
+        <Row label="Account number" value={info.bankAccountNumber} />
+        <Row label="IFSC" value={info.ifscCode} />
+        <Row label="Bank" value={info.bankName} />
+        <Row label="PayPal" value={info.paypalEmail} />
+      </div>
+      {info.instructions && <p className="mt-3 text-sm text-dim">{info.instructions}</p>}
+      {upiLink && amount > 0 && (
+        <a href={upiLink} className="btn-primary mt-4 inline-flex md:hidden">Pay ₹{amount} with a UPI app</a>
+      )}
+    </div>
+  );
+};
+
 const SubmitCommission = () => {
   const dispatch = useDispatch();
-  const { loading, loaded, unpaidCommission, commissionRate, proofs } = useSelector((s) => s.commission);
+  const { loading, loaded, unpaidCommission, commissionRate, proofs, paymentInfo, paymentConfigured, demo } = useSelector((s) => s.commission);
+  const { user } = useSelector((s) => s.user);
+  const dueAt = user?.commissionDueAt ? new Date(user.commissionDueAt) : null;
+  const overdue = unpaidCommission > 0 && dueAt && dueAt < new Date();
   const [amount, setAmount] = useState("");
   const [comment, setComment] = useState("");
   const [proof, setProof] = useState(null);
@@ -24,11 +83,14 @@ const SubmitCommission = () => {
 
   useEffect(() => {
     dispatch(getMyCommission());
+    dispatch(getPaymentInfo());
   }, [dispatch]);
 
   useEffect(() => {
-    if (loaded && unpaidCommission > 0 && amount === "") setAmount(String(unpaidCommission));
+    if (loaded && unpaidCommission > 0 && amount === "") setAmount(String(Math.max(0, unpaidCommission - pendingTotal)));
   }, [loaded, unpaidCommission]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pendingTotal = proofs.filter((p) => p.status === "Pending" || p.status === "Approved").reduce((sum, p) => sum + p.amount, 0);
 
   const pick = (e) => {
     const file = e.target.files[0];
@@ -58,20 +120,33 @@ const SubmitCommission = () => {
     }
   };
 
-  const pending = proofs.filter((p) => p.status === "Pending" || p.status === "Approved").reduce((s, p) => s + p.amount, 0);
+  const pending = pendingTotal;
 
   return (
     <Page narrow>
       <PageHeader title="Commission" subtitle={`Sellers pay ${commissionRate * 100}% of each sale to the platform once the buyer has paid.`} />
 
+      {demo && (
+        <p className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm text-gold">
+          <strong>Demo project:</strong> the payment details below are dummy. Do not send real money — just upload any sample screenshot to try the flow.
+        </p>
+      )}
+
       <div className={`panel panel-pad mb-6 flex items-center justify-between gap-4 ${unpaidCommission > 0 ? "!border-live/50" : "!border-win/40"}`}>
         <div>
           <p className="text-sm text-dim">Currently owed</p>
           <p className={`num font-display text-4xl font-extrabold ${unpaidCommission > 0 ? "text-live" : "text-win"}`}>{formatMoney(unpaidCommission)}</p>
+          {unpaidCommission > 0 && dueAt && (
+            <p className={`mt-1 text-xs ${overdue ? "font-bold text-live" : "text-dim"}`}>
+              {overdue ? "Overdue since " : "Pay by "}{formatDate(dueAt)}{overdue ? " — bidding is paused until you pay." : ""}
+            </p>
+          )}
           {pending > 0 && <p className="mt-1 text-xs text-dim">{formatMoney(pending)} of payments awaiting review</p>}
         </div>
         {unpaidCommission === 0 && loaded && <span className="badge-win"><CheckCircle2 size={14} /> All settled</span>}
       </div>
+
+      {unpaidCommission > 0 && <PayTo info={paymentInfo} configured={paymentConfigured} amount={Math.max(0, unpaidCommission - pending)} />}
 
       {unpaidCommission > 0 ? (
         <form onSubmit={submit} className="panel panel-pad space-y-4">
@@ -112,7 +187,10 @@ const SubmitCommission = () => {
                   <p className="num font-bold">{formatMoney(p.amount)}</p>
                   <p className="text-xs text-faint">{formatDate(p.uploadedAt)}</p>
                 </div>
-                <span className={STATUS_CLASS[p.status] || "badge-ended"}>{p.status}</span>
+                <div className="text-right">
+                  <span className={STATUS_CLASS[p.status] || "badge-ended"}>{p.status}</span>
+                  {p.status === "Rejected" && p.adminNote && <p className="mt-1 max-w-[220px] text-xs text-live">{p.adminNote}</p>}
+                </div>
               </li>
             ))}
           </ul>

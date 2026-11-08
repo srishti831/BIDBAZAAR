@@ -13,7 +13,7 @@
     "create-admin": "node scripts/createAdmin.js",
     "migrate-dates": "node scripts/migrateAuctionDates.js",
     "migrate-roles": "node scripts/migrateRoles.js",
-    "test": "node --experimental-test-module-mocks tests/scenarios.mjs"
+    "test": "node --experimental-test-module-mocks tests/scenarios.mjs && node --experimental-test-module-mocks tests/notifications.mjs"
   },
   "keywords": [
     "mern",

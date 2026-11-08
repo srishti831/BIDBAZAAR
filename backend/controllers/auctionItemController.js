@@ -5,7 +5,8 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
 import ErrorHandler from "../middlewares/error.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
-import { calculateCommission } from "./commissionController.js";
+import { runSettlementThrottled } from "../automation/endedAuctionCron.js";
+import { isRealImage } from "../utils/imageCheck.js";
 import {
   AUCTION_CATEGORIES,
   MAX_ACTIVE_LISTINGS,
@@ -13,12 +14,19 @@ import {
   getMinIncrement,
   getMinNextBid,
   hasPayoutDetails,
+  isCommissionOverdue,
   resolveSchedule,
 } from "../utils/bidding.js";
 
 // List views never need the full bid array (it also holds user ids).
-const toListItem = ({ bids = [], ...rest }) => ({
+export const toListItem = ({ bids = [], ...rest }, viewerId = null) => ({
   ...rest,
+  // Only reveal "you are leading" to the leader themselves.
+  highestBidder:
+    viewerId && rest.highestBidder && String(rest.highestBidder) === String(viewerId)
+      ? rest.highestBidder
+      : null,
+  notify: undefined,
   bidCount: bids.length,
   minNextBid: getMinNextBid(rest),
 });
@@ -28,6 +36,28 @@ const assertCanList = async (user) => {
     return new ErrorHandler(
       "Add your payout details (bank, UPI or PayPal) in your profile before listing an item, so winners know where to pay.",
       403
+    );
+  }
+  if (Number(user.unpaidCommission) > 0) {
+    return new ErrorHandler(
+      isCommissionOverdue(user)
+        ? "Your commission is overdue. Pay it from the Commission page before posting a new auction."
+        : "You have unpaid commissions. Pay them from the Commission page before posting a new auction.",
+      403
+    );
+  }
+  // An auction that just ended is still being settled: its commission is not
+  // on the account yet, so wait for it instead of slipping a new listing in.
+  const unsettled = await Auction.countDocuments({
+    createdBy: user._id,
+    endTime: { $lte: new Date() },
+    commissionCalculated: false,
+    "bids.0": { $exists: true },
+  });
+  if (unsettled > 0) {
+    return new ErrorHandler(
+      "One of your auctions has just ended and is being settled. Try again in a minute.",
+      400
     );
   }
   const active = await Auction.countDocuments({
@@ -49,7 +79,7 @@ export const addNewAuctionItem = catchAsyncErrors(async (req, res, next) => {
   }
   const { image } = req.files;
   const allowedFormats = ["image/png", "image/jpeg", "image/webp"];
-  if (!allowedFormats.includes(image.mimetype)) {
+  if (!allowedFormats.includes(image.mimetype) || !(await isRealImage(image))) {
     return next(new ErrorHandler("File format not supported.", 400));
   }
 
@@ -116,10 +146,12 @@ export const addNewAuctionItem = catchAsyncErrors(async (req, res, next) => {
 });
 
 export const getAllItems = catchAsyncErrors(async (req, res, next) => {
-  const items = await Auction.find().sort({ createdAt: -1 }).lean();
+  // Settle anything that ended even if the cron could not run (e.g. a sleeping server).
+  runSettlementThrottled();
+  const items = await Auction.find().sort({ createdAt: -1 }).limit(300).lean();
   res.status(200).json({
     success: true,
-    items: items.map(toListItem),
+    items: items.map((item) => toListItem(item, req.user?._id)),
     serverTime: new Date(),
   });
 });
@@ -139,8 +171,21 @@ export const getAuctionDetails = catchAsyncErrors(async (req, res, next) => {
   const status = getAuctionStatus(auction);
 
   const plain = auction.toObject();
-  const bidders = [...plain.bids].sort((a, b) => b.amount - a.amount);
+  // Public page: show who bid and how much, never account ids.
+  const bidders = [...plain.bids]
+    .sort((a, b) => b.amount - a.amount)
+    .map(({ userId, ...bid }) => ({
+      ...bid,
+      mine: !!viewer && !!userId && String(userId) === viewer._id.toString(),
+    }));
   delete plain.bids;
+  // The page only needs to know whether the viewer is the leader.
+  plain.highestBidder =
+    viewer && auction.highestBidder && String(auction.highestBidder) === viewer._id.toString()
+      ? viewer._id
+      : null;
+  delete plain.notify;
+  runSettlementThrottled();
 
   const seller = await User.findById(auction.createdBy).select("userName profileImage");
 
@@ -175,7 +220,7 @@ export const getMyAuctionItems = catchAsyncErrors(async (req, res, next) => {
       (best, bid) => (!best || bid.amount > best.amount ? bid : best),
       null
     );
-    return { ...toListItem(item), leadingBidder: top?.userName || null };
+    return { ...toListItem(item, req.user._id), leadingBidder: top?.userName || null };
   });
   res.status(200).json({
     success: true,
@@ -200,10 +245,10 @@ export const removeFromAuction = catchAsyncErrors(async (req, res, next) => {
   if (status === "live" && auctionItem.bids.length > 0) {
     return next(new ErrorHandler("You cannot delete a running auction that has bids.", 400));
   }
-  if (status === "ended" && auctionItem.bids.length > 0 && !auctionItem.commissionCalculated) {
+  if (status === "ended" && auctionItem.bids.length > 0) {
     return next(
       new ErrorHandler(
-        "This auction has just ended and is being settled. Try again in a minute.",
+        "A sold auction can't be deleted - the winner needs its details and the commission record stays.",
         400
       )
     );
@@ -242,11 +287,12 @@ export const republishItem = catchAsyncErrors(async (req, res, next) => {
       )
     );
   }
-  // Wait for the settlement job so sale stats / commission are never half-processed.
-  if (auctionItem.bids.length > 0 && !auctionItem.commissionCalculated) {
+  // Only items that did NOT sell can be republished. Re-opening a sold item
+  // would let a seller take the buyer's money off-platform and erase the commission.
+  if (auctionItem.bids.length > 0 || auctionItem.currentBid > 0) {
     return next(
       new ErrorHandler(
-        "This auction has just ended and is being settled. Try again in a minute.",
+        "This item received bids, so it counts as sold and can't be republished. Create a new listing instead.",
         400
       )
     );
@@ -271,28 +317,6 @@ export const republishItem = catchAsyncErrors(async (req, res, next) => {
   const listingError = await assertCanList(req.user);
   if (listingError) return next(listingError);
 
-  // The previous sale is being voided: roll back the winner's stats and the
-  // commission that was charged for *this* auction only (not the whole balance).
-  // Only do so if the settlement job actually applied them.
-  if (auctionItem.commissionCalculated && auctionItem.highestBidder && auctionItem.currentBid > 0) {
-    await User.findByIdAndUpdate(auctionItem.highestBidder, [
-      {
-        $set: {
-          moneySpent: { $max: [0, { $subtract: ["$moneySpent", auctionItem.currentBid] }] },
-          auctionsWon: { $max: [0, { $subtract: ["$auctionsWon", 1] }] },
-        },
-      },
-    ]);
-    const commission = calculateCommission(auctionItem.currentBid);
-    await User.findByIdAndUpdate(auctionItem.createdBy, [
-      {
-        $set: {
-          unpaidCommission: { $max: [0, { $subtract: ["$unpaidCommission", commission] }] },
-        },
-      },
-    ]);
-  }
-
   await Bid.deleteMany({ auctionItem: auctionItem._id });
   auctionItem = await Auction.findByIdAndUpdate(
     id,
@@ -306,6 +330,7 @@ export const republishItem = catchAsyncErrors(async (req, res, next) => {
         currentBid: 0,
         highestBidder: null,
         extensions: 0,
+        notify: { pending: false, winnerSent: false, sellerSent: false, attempts: 0, lastError: "" },
       },
     },
     { new: true, runValidators: true }

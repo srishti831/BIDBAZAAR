@@ -15,6 +15,7 @@ import AuctionItemDelete from "./sub-components/AuctionItemDelete";
 import BiddersAuctioneersGraph from "./sub-components/BiddersAuctioneersGraph";
 import PaymentGraph from "./sub-components/PaymentGraph";
 import PaymentProofs from "./sub-components/PaymentProofs";
+import PaymentSettings from "./sub-components/PaymentSettings";
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -51,6 +52,10 @@ const Dashboard = () => {
         </section>
       </div>
 
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-bold">Where sellers pay you (commission)</h2>
+        <PaymentSettings />
+      </section>
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-bold">Payment proofs</h2>
         <PaymentProofs />

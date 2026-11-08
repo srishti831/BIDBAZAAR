@@ -29,6 +29,18 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Emails: Gmail API (preferred) ...
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_SENDER_EMAIL
+        sync: false
+      # ... with SMTP (Gmail app password) as automatic fallback
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
@@ -39,3 +51,10 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # Admin account is created automatically on first start
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_MODE
+        value: "true"

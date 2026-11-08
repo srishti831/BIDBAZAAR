@@ -27,6 +27,9 @@ const paymentProofSchema = new mongoose.Schema({
   },
   amount: Number,
   comment: String,
+  // Message from the admin (shown to the seller, e.g. why a proof was rejected).
+  adminNote: { type: String, default: "" },
+  reviewedAt: Date,
 });
 
 export const PaymentProof = mongoose.model("PaymentProof", paymentProofSchema);

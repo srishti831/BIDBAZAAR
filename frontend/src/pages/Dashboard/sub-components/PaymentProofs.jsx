@@ -10,15 +10,18 @@ const UpdateModal = ({ open, onClose }) => {
   const dispatch = useDispatch();
   const { singlePaymentProof: proof, loading } = useSelector((s) => s.superAdmin);
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState("Pending");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     setAmount(proof.amount ?? "");
-    setStatus(proof.status || "Pending");
+    setNote(proof.adminNote || "");
   }, [proof]);
 
-  const save = async () => {
-    await dispatch(updatePaymentProof(proof._id, status, amount));
+  const locked = proof.status === "Settled";
+
+  const decide = async (status) => {
+    if (status === "Rejected" && !window.confirm("Reject this payment proof? The seller will be emailed.")) return;
+    await dispatch(updatePaymentProof(proof._id, status, amount, note));
     onClose();
   };
 
@@ -31,14 +34,12 @@ const UpdateModal = ({ open, onClose }) => {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="pp-amount">Amount (₹)</label>
-            <input id="pp-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="input" />
+            <label className="label" htmlFor="pp-amount">Amount received (₹)</label>
+            <input id="pp-amount" type="number" min="0" disabled={locked} value={amount} onChange={(e) => setAmount(e.target.value)} className="input" />
           </div>
           <div>
-            <label className="label" htmlFor="pp-status">Status</label>
-            <select id="pp-status" value={status} onChange={(e) => setStatus(e.target.value)} className="input">
-              {["Pending", "Approved", "Rejected", "Settled"].map((s) => <option key={s}>{s}</option>)}
-            </select>
+            <span className="label">Current status</span>
+            <input disabled value={proof.status || ""} className="input" />
           </div>
         </div>
         <div>
@@ -48,11 +49,22 @@ const UpdateModal = ({ open, onClose }) => {
         {proof.proof?.url && (
           <a href={proof.proof.url} target="_blank" rel="noreferrer" className="btn-ghost w-full">Open screenshot</a>
         )}
-        <p className="text-xs text-faint">Approved proofs are applied to the member's balance automatically within a minute.</p>
-        <div className="flex gap-3">
-          <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-          <button type="button" onClick={save} disabled={loading} className="btn-primary flex-1">{loading ? "Saving…" : "Save"}</button>
+        <div>
+          <label className="label" htmlFor="pp-note">Message to seller (optional, shown if rejected)</label>
+          <input id="pp-note" disabled={locked} value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} className="input" placeholder="e.g. Amount in the screenshot does not match" />
         </div>
+        {locked ? (
+          <p className="text-sm text-win">This payment is already approved and applied.</p>
+        ) : (
+          <>
+            <p className="text-xs text-faint">Check the amount in your bank/UPI app first. Approving applies it to the seller's balance immediately and emails them.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+              <button type="button" onClick={() => decide("Rejected")} disabled={loading} className="btn-danger flex-1">Reject</button>
+              <button type="button" onClick={() => decide("Approved")} disabled={loading} className="btn-primary flex-1">{loading ? "Saving…" : "Approve"}</button>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

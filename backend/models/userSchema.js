@@ -69,6 +69,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // When the oldest unpaid commission has to be paid by (cleared when balance is 0).
+  commissionDueAt: Date,
+  // Tokens issued before this moment are rejected (set on password change).
+  passwordChangedAt: Date,
   auctionsWon: {
     type: Number,
     default: 0,

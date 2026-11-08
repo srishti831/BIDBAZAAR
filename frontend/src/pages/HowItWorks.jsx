@@ -9,7 +9,7 @@ const steps = [
   { icon: Mail, title: "Winning", text: "The highest bidder is emailed when the auction ends, and sees the seller's contact and payment details under My bids. The seller gets the winner's contact details too." },
   { icon: Wallet, title: "Selling", text: "Add payout details (bank, UPI or PayPal) once, the first time you list an item. Details are only shared with the winner." },
   { icon: Receipt, title: "Commission", text: "After the buyer pays you, pay the platform 5% and upload a screenshot on the Commission page. An admin verifies it. Unpaid commission pauses new listings." },
-  { icon: RotateCcw, title: "If the winner doesn't pay", text: "Republish the item from My listings at no cost. The failed sale and its commission are cleared." },
+  { icon: RotateCcw, title: "If nobody bids", text: "Republish the item from My listings at no cost. Items that received bids count as sold and can't be republished." },
   { icon: Eye, title: "Watchlist", text: "Tap the heart on any auction to save it, so you can return before it starts or ends." },
 ];
 

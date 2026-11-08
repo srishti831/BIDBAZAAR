@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 import { generateToken, cookieOptions } from "../utils/jwtToken.js";
 import { hasPayoutDetails } from "../utils/bidding.js";
+import { isRealImage } from "../utils/imageCheck.js";
 
 const ALLOWED_IMAGES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -14,7 +15,7 @@ export const register = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Profile Image Required.", 400));
   }
   const { profileImage } = req.files;
-  if (!ALLOWED_IMAGES.includes(profileImage.mimetype)) {
+  if (!ALLOWED_IMAGES.includes(profileImage.mimetype) || !(await isRealImage(profileImage))) {
     return next(new ErrorHandler("File format not supported.", 400));
   }
 
@@ -107,7 +108,7 @@ export const updateProfile = catchAsyncErrors(async (req, res, next) => {
 
   const newImage = req.files?.profileImage;
   if (newImage) {
-    if (!ALLOWED_IMAGES.includes(newImage.mimetype)) {
+    if (!ALLOWED_IMAGES.includes(newImage.mimetype) || !(await isRealImage(newImage))) {
       return next(new ErrorHandler("File format not supported.", 400));
     }
     const uploaded = await cloudinary.uploader.upload(newImage.tempFilePath, {
@@ -199,8 +200,11 @@ export const changePassword = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Current password is incorrect.", 400));
   }
   user.password = newPassword;
+  // Small back-dating margin is not needed: the new token below is issued after this.
+  user.passwordChangedAt = new Date(Date.now() - 1000);
   await user.save();
-  res.status(200).json({ success: true, message: "Password changed." });
+  // Old sessions die; this one continues with a fresh token.
+  generateToken(user, "Password changed. Other devices have been logged out.", 200, res);
 });
 
 export const toggleWatchlist = catchAsyncErrors(async (req, res, next) => {
@@ -228,7 +232,7 @@ export const toggleWatchlist = catchAsyncErrors(async (req, res, next) => {
 
 export const getWatchlist = catchAsyncErrors(async (req, res, next) => {
   const items = await Auction.find({ _id: { $in: req.user.watchlist || [] } })
-    .select("-bids")
+    .select("-bids -notify")
     .lean();
   res.status(200).json({ success: true, items, serverTime: new Date() });
 });

@@ -20,7 +20,7 @@ const ListingCard = ({ auction }) => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const canDelete = !(status === "live" && auction.bidCount > 0);
+  const canDelete = !(auction.bidCount > 0 && status !== "upcoming");
 
   const remove = async () => {
     setDeleting(true);
@@ -62,7 +62,7 @@ const ListingCard = ({ auction }) => {
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           <Link to={`/auction/item/${auction._id}`} className="btn-ghost btn-sm"><Eye size={15} /> View</Link>
-          {status === "ended" && (
+          {status === "ended" && !hasBids && (
             <button type="button" onClick={() => setRepublishOpen(true)} className="btn-primary btn-sm">
               <RotateCcw size={15} /> Republish
             </button>
@@ -71,15 +71,16 @@ const ListingCard = ({ auction }) => {
             type="button"
             onClick={() => setDeleteOpen(true)}
             disabled={!canDelete}
-            title={canDelete ? "Delete this listing" : "A live auction with bids can't be deleted"}
+            title={canDelete ? "Delete this listing" : "Auctions with bids can't be deleted"}
             className="btn-danger btn-sm ml-auto"
           >
             <Trash2 size={15} /> Delete
           </button>
         </div>
         {status !== "ended" && (
-          <p className="text-xs text-faint">You can republish this item once the auction has ended.</p>
+          <p className="text-xs text-faint">If nobody bids, you can republish this item once the auction has ended.</p>
         )}
+        {sold && <p className="text-xs text-faint">Sold - the winner has been emailed your payment details.</p>}
       </div>
 
       <RepublishModal auction={auction} open={republishOpen} onClose={() => setRepublishOpen(false)} />

@@ -89,7 +89,17 @@ Frontend runs at:
 
 `http://localhost:5173`
 
-## Create a Super Admin
+## Admin login & commission payments
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `backend/.env`; the Super Admin account is created automatically on the first start. Log in at `/login` and you land on the Dashboard.
+
+In the Dashboard, fill **Where sellers pay you (commission)** with your UPI / bank / PayPal details. Sellers see exactly these on their Commission page and in the "auction sold" email. When a seller uploads a screenshot, review it under **Payment proofs** and press **Approve** (balance is cleared immediately and the seller is emailed) or **Reject** (with a reason).
+
+## Emails
+
+Emails go through the Gmail API (`GOOGLE_*` variables) and automatically fall back to SMTP (`SMTP_MAIL` / `SMTP_PASSWORD`, a Gmail app password). Failed emails are retried every minute for up to 3 days. If your Google OAuth app is in "Testing" mode, the refresh token expires after 7 days - publish the app (or rely on the SMTP fallback).
+
+## Create a Super Admin manually
 
 Run the following command from the backend directory:
 
@@ -211,6 +221,27 @@ Scenarios cover:
 - Anti-sniping logic
 - Race conditions
 - Auction settlement rules
+
+## Business rules (as implemented)
+
+- A seller can run up to **2** upcoming/live auctions at once.
+- Commission is 5% of the winning bid, added when the auction ends. Until it is paid and approved, the seller cannot list new items; after **7 days** unpaid, the seller also cannot bid.
+- Items that received bids count as **sold** and cannot be deleted or republished (so commission cannot be erased). Items with no bids can be republished free.
+- Two bids at the same moment: the database accepts only one write that still sees the old price; the other user gets "someone else bid first" and must bid again. Same amount twice is impossible - the later one is below the new minimum.
+- If the server was asleep and missed the cron, the first visitor browsing auctions triggers settlement.
+- `DEMO_MODE=true` (default) shows dummy UPI/bank details and a Demo notice. Set `DEMO_MODE=false` and enter real details in the admin Dashboard for real use.
+
+## Known limitations (documented on purpose)
+
+This is a demo/portfolio project. For production these would be next:
+
+- JWT is also kept in `localStorage` (for Safari/cross-site cookies). Production: same parent domain + HttpOnly cookie only.
+- No email verification or password reset; fake accounts can shill-bid.
+- No strike system for winners who never pay; commission is an honour system (payments happen off-platform). Production: Razorpay/UPI with escrow.
+- Commission is one running balance (no per-sale ledger); money is stored as floating numbers (use integer paise in production).
+- Settlement is not wrapped in a DB transaction; a server crash in the middle of settling one auction could leave it half-processed.
+- Rate limiter is in-memory (single instance only); auction list is capped at 300 items instead of full pagination; polling instead of websockets.
+- No auto-bid, reserve price or ratings.
 
 ## License
 

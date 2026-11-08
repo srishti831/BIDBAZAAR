@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { login } from "@/store/slices/userSlice";
 import { Page } from "@/custom-components/Page";
@@ -7,18 +7,18 @@ import { Page } from "@/custom-components/Page";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { loading, isAuthenticated } = useSelector((s) => s.user);
+  const { loading, isAuthenticated, user } = useSelector((s) => s.user);
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const location = useLocation();
+
+  const homeFor = (role) => location.state?.from || (role === "Super Admin" ? "/dashboard" : "/");
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const ok = await dispatch(login({ email, password }));
-    if (ok) navigate(location.state?.from || "/", { replace: true });
+    await dispatch(login({ email, password }));
   };
 
-  if (isAuthenticated) return <Navigate to={location.state?.from || "/"} replace />;
+  if (isAuthenticated) return <Navigate to={homeFor(user?.role)} replace />;
 
   return (
     <Page narrow className="grid min-h-[70vh] place-items-center">

@@ -11,6 +11,7 @@ import {
   MAX_SNIPE_EXTENSIONS,
   getMinIncrement,
   getMinNextBid,
+  isCommissionOverdue,
 } from "../utils/bidding.js";
 
 const money = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
@@ -47,6 +48,14 @@ export const placeBid = catchAsyncErrors(async (req, res, next) => {
 
   if (auctionItem.createdBy.toString() === bidder._id.toString()) {
     return next(new ErrorHandler("You can't bid on your own auction.", 403));
+  }
+  if (isCommissionOverdue(bidder)) {
+    return next(
+      new ErrorHandler(
+        "Your commission payment is overdue. Pay it from the Commission page to bid again.",
+        403
+      )
+    );
   }
   const now = new Date();
   const status = getAuctionStatus(auctionItem, now);

@@ -18,7 +18,7 @@ export const validateSchedule = ({ startNow, start, end }) => {
   if (!end) return "Choose when the auction should end.";
   const startMs = startNow ? now : start.getTime();
   if (!startNow && startMs < now - 5 * 60e3) return "The start time is in the past.";
-  if (end.getTime() - startMs < 10 * 60e3) return "An auction must run for at least 10 minutes.";
+  if (end.getTime() - startMs < 5 * 60 * 1000) return "An auction must run for at least 5 minutes.";
   if (end.getTime() - startMs > 30 * 24 * 3600e3) return "An auction can run for 30 days at most.";
   return null;
 };

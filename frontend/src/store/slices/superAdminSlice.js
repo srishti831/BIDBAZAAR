@@ -13,6 +13,9 @@ const superAdminSlice = createSlice({
     stats: null,
     paymentProofs: [],
     singlePaymentProof: {},
+    paymentSettings: null,
+    paymentConfigured: true,
+    savingSettings: false,
   },
   reducers: {
     requestForMonthlyRevenue(state, action) {
@@ -89,6 +92,13 @@ const superAdminSlice = createSlice({
     },
     failureForAuctionItemDelete(state, action) {
       state.loading = false;
+    },
+    settingsLoaded(state, action) {
+      state.paymentSettings = action.payload.paymentInfo;
+      state.paymentConfigured = action.payload.configured;
+    },
+    savingSettings(state, action) {
+      state.savingSettings = action.payload;
     },
     statsLoaded(state, action) {
       state.stats = action.payload;
@@ -196,12 +206,36 @@ export const getSinglePaymentProofDetail = (id) => async (dispatch) => {
   }
 };
 
-export const updatePaymentProof = (id, status, amount) => async (dispatch) => {
+export const getPaymentSettings = () => async (dispatch) => {
+  try {
+    const response = await axios.get(`${API_URL}/superadmin/payment-settings`);
+    dispatch(superAdminSlice.actions.settingsLoaded(response.data));
+  } catch (error) {
+    console.error(getErrorMessage(error));
+  }
+};
+
+export const savePaymentSettings = (data) => async (dispatch) => {
+  dispatch(superAdminSlice.actions.savingSettings(true));
+  try {
+    const response = await axios.put(`${API_URL}/superadmin/payment-settings`, data);
+    dispatch(superAdminSlice.actions.settingsLoaded({ ...response.data, configured: true }));
+    toast.success(response.data.message);
+    return true;
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return false;
+  } finally {
+    dispatch(superAdminSlice.actions.savingSettings(false));
+  }
+};
+
+export const updatePaymentProof = (id, status, amount, adminNote = "") => async (dispatch) => {
   dispatch(superAdminSlice.actions.requestForUpdatePaymentProof());
   try {
     const response = await axios.put(
       `${API_URL}/superadmin/paymentproof/status/update/${id}`,
-      { status, amount },
+      { status, amount, adminNote },
       { withCredentials: true, headers: { "Content-Type": "application/json" } }
     );
     dispatch(superAdminSlice.actions.successForUpdatePaymentProof());

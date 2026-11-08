@@ -12,10 +12,20 @@ const commissionSlice = createSlice({
     unpaidCommission: 0,
     commissionRate: 0.05,
     proofs: [],
+    paymentInfo: null,
+    paymentConfigured: false,
+    demo: false,
+    dueDays: 7,
   },
   reducers: {
     setLoading(state, action) {
       state.loading = action.payload;
+    },
+    paymentInfoLoaded(state, action) {
+      state.paymentInfo = action.payload.paymentInfo;
+      state.paymentConfigured = action.payload.configured;
+      state.demo = !!action.payload.demo;
+      state.dueDays = action.payload.dueDays || 7;
     },
     summaryLoaded(state, action) {
       state.loaded = true;
@@ -32,6 +42,15 @@ export const getMyCommission = () => async (dispatch) => {
   try {
     const response = await axios.get(`${API_URL}/commission/mine`);
     dispatch(a.summaryLoaded(response.data));
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+  }
+};
+
+export const getPaymentInfo = () => async (dispatch) => {
+  try {
+    const response = await axios.get(`${API_URL}/commission/payment-info`);
+    dispatch(a.paymentInfoLoaded(response.data));
   } catch (error) {
     toast.error(getErrorMessage(error));
   }

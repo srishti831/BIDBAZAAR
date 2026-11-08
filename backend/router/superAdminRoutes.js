@@ -5,6 +5,8 @@ import {
   deletePaymentProof,
   fetchAllUsers,
   getAllPaymentProofs,
+  getPaymentSettings,
+  updatePaymentSettings,
   getPaymentProofDetail,
   monthlyRevenue,
   platformStats,
@@ -67,6 +69,20 @@ router.get(
   isAuthenticated,
   isAuthorized("Super Admin"),
   platformStats
+);
+
+router.get(
+  "/payment-settings",
+  isAuthenticated,
+  isAuthorized("Super Admin"),
+  getPaymentSettings
+);
+
+router.put(
+  "/payment-settings",
+  isAuthenticated,
+  isAuthorized("Super Admin"),
+  updatePaymentSettings
 );
 
 export default router;
