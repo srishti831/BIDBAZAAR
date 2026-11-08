@@ -1,42 +1,123 @@
-# BidBazaar
+# BidBazaar – Online Auction Platform
 
-A **MERN-stack online auction platform** where users can list products, participate in live auctions, track bids, and manage commission payments. Auction winners are notified automatically via email when an auction ends, while a Super Admin verifies commission payments.
+BidBazaar is a MERN stack-based online auction platform where users can buy and sell products through auctions.
 
-## Tech Stack
+A user can create an auction for a product and other users can place bids on it. When the auction ends, the highest bidder wins the auction. The platform also handles commission calculation, payment proof submission, and admin verification.
 
-- **Frontend:** React 18, Vite, Redux Toolkit, Tailwind CSS
-- **Backend:** Node.js, Express 5, MongoDB, Mongoose
-- **Additional Tools:** Cloudinary, Nodemailer, node-cron
+The main idea behind this project is to provide a platform where users can participate in auctions and manage their buying and selling activities from a single account.
 
 ## Features
 
-- **User Accounts:** A single account can act as both bidder and auctioneer.
-- **Auction Management:** Create, list, manage, and republish auction items.
-- **Bidding System:** Place bids on active auctions with bidding and anti-sniping logic.
-- **Watchlist:** Save auctions to track them easily.
-- **Automated Auction Closing:** Background jobs handle ended auctions and winner notifications.
-- **Commission Management:** Winners submit proof of the 5% commission payment.
-- **Super Admin Dashboard:** View platform statistics, revenue and user graphs, verify payment proofs, and delete auctions.
+### User Account
+- Users can register and log in.
+- A single account can be used for both buying and selling.
+- Users can manage their profile and payout details.
+- Users can view their bidding and auction activities.
 
-## User Roles
+### Auction Management
+- Users can create and schedule auctions.
+- Browse upcoming, active, and completed auctions.
+- View auction details and current highest bids.
+- Manage their own auction listings.
+- Republish auctions that ended without any bids.
+- Upload product images using Cloudinary.
 
-| Role | Permissions |
-|---|---|
-| User | List items, bid on other users' items, manage watchlist, and submit commission payment proof. Users cannot bid on their own listings. |
-| Super Admin | View dashboard statistics, revenue and user graphs, approve/reject payment proofs, and delete auctions. |
+### Bidding System
+- Users can place bids on active auctions.
+- The system checks whether a bid meets the minimum bid requirement.
+- Users cannot bid on their own products.
+- Users can track their bidding history.
+- The previous highest bidder is notified when someone places a higher bid.
 
-Payout details are required before a user's first listing.
+### Anti-Sniping
+To prevent users from placing a last-second bid just before an auction ends:
+- If someone places a bid in the last minute, the auction is extended by 2 minutes.
+- This extension can happen a maximum of 3 times.
+- The minimum auction duration is 5 minutes.
 
-Super Admin accounts cannot be created through the signup form. They must be created using the admin script.
+### Automatic Auction Settlement
+- Auctions are automatically processed when their end time is reached.
+- The highest bidder is selected as the winner.
+- Winner and seller information is updated.
+- The platform calculates the seller's commission.
+- Emails are sent to the winner and seller.
+- Failed email notifications are retried automatically.
+
+### Commission Management
+- The platform charges a 5% commission on successful auctions.
+- Sellers can view their unpaid commission.
+- Sellers submit a screenshot as proof of commission payment.
+- The Super Admin reviews the payment proof and approves or rejects it.
+- The seller's outstanding commission is updated after approval.
+
+### Super Admin Dashboard
+- View platform statistics.
+- View monthly user and revenue graphs.
+- Monitor auctions and users.
+- Review commission payment proofs.
+- Approve or reject payment submissions.
+- Manage platform payment details.
+- Delete eligible auction listings.
+
+### Email Notifications
+- Gmail API is used for sending emails, with SMTP as a fallback.
+- Winners receive auction-winning emails.
+- Sellers receive auction completion and commission details.
+- Previous highest bidders receive outbid notifications.
+- Failed notifications are retried automatically.
+
+### Demo Payment Mode
+The project includes a demo payment mode that displays sample UPI and bank details. It allows users to demonstrate the commission payment workflow without making actual payments.
+
+## Tech Stack
+
+- **Frontend:** React, Vite, JavaScript, Tailwind CSS
+- **State Management:** Redux Toolkit
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB, Mongoose
+- **Authentication:** JWT, bcrypt
+- **Image Uploads:** Cloudinary
+- **Email:** Gmail API, OAuth 2.0, Nodemailer
+- **Scheduled Tasks:** node-cron
+- **Deployment:** Vercel and Render
+
+## Project Structure
+
+```text
+BidBazaar/
+│
+├── backend/
+│   ├── automation/
+│   ├── controllers/
+│   ├── database/
+│   ├── middlewares/
+│   ├── models/
+│   ├── router/
+│   ├── scripts/
+│   ├── tests/
+│   ├── utils/
+│   ├── app.js
+│   └── server.js
+│
+├── frontend/
+│   └── src/
+│       ├── components/
+│       ├── custom-components/
+│       ├── hooks/
+│       ├── layout/
+│       ├── lib/
+│       ├── pages/
+│       └── store/
+│
+└── README.md
+```
 
 ## Run Locally
 
-### Prerequisites
-
+### Requirements
 - Node.js 18.18 or later
 - MongoDB database
 - Cloudinary account
-- SMTP credentials for email notifications
 
 ### 1. Clone the repository
 
@@ -45,206 +126,82 @@ git clone https://github.com/srishti831/BIDBAZAAR.git
 cd BIDBAZAAR
 ```
 
-### 2. Backend setup
+### 2. Start the backend
 
 ```bash
 cd backend
 npm install
-```
-
-Create a `.env` file inside the `backend` directory and configure the required database, JWT, Cloudinary, SMTP, and frontend-origin variables using the names expected by the backend configuration.
-
-Start the backend:
-
-```bash
 npm run dev
 ```
 
-Backend runs at:
+Configure the required environment variables in `backend/.env`, including MongoDB, JWT, Cloudinary, email, and frontend URL settings.
 
-`http://localhost:5000`
+Backend runs at `http://localhost:5000`.
 
-### 3. Frontend setup
+### 3. Start the frontend
 
-Open a new terminal:
+Open another terminal:
 
 ```bash
 cd frontend
 npm install
 ```
 
-Create a `.env` file inside the `frontend` directory:
+Create `frontend/.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000/api/v1
 ```
 
-Start the frontend:
+Run:
 
 ```bash
 npm run dev
 ```
 
-Frontend runs at:
+Frontend runs at `http://localhost:5173`.
 
-`http://localhost:5173`
+## Admin Setup
 
-## Admin login & commission payments
+The Super Admin account can be created using the admin setup script.
 
-Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `backend/.env`; the Super Admin account is created automatically on the first start. Log in at `/login` and you land on the Dashboard.
-
-In the Dashboard, fill **Where sellers pay you (commission)** with your UPI / bank / PayPal details. Sellers see exactly these on their Commission page and in the "auction sold" email. When a seller uploads a screenshot, review it under **Payment proofs** and press **Approve** (balance is cleared immediately and the seller is emailed) or **Reject** (with a reason).
-
-## Emails
-
-Emails go through the Gmail API (`GOOGLE_*` variables) and automatically fall back to SMTP (`SMTP_MAIL` / `SMTP_PASSWORD`, a Gmail app password). Failed emails are retried every minute for up to 3 days. If your Google OAuth app is in "Testing" mode, the refresh token expires after 7 days - publish the app (or rely on the SMTP fallback).
-
-## Create a Super Admin manually
-
-Run the following command from the backend directory:
+Configure `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend environment variables, then run:
 
 ```bash
-ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='ChooseAStrongOne1' npm run create-admin
-```
-
-For Windows PowerShell:
-
-```powershell
-$env:ADMIN_EMAIL="you@example.com"
-$env:ADMIN_PASSWORD="ChooseAStrongOne1"
+cd backend
 npm run create-admin
 ```
 
-Use your own email and a strong password.
-
-## Database Migration
-
-### Migrate User Roles
-
-Older versions used separate `Bidder` and `Auctioneer` roles. The current version uses a single `User` role.
-
-Run this once if you have an existing database:
-
-```bash
-npm run migrate-roles
-```
-
-### Migrate Auction Dates
-
-Older versions stored auction start and end times as text. If you have auctions from an older version, run:
-
-```bash
-npm run migrate-dates
-```
-
-Alternatively, you can delete old test auctions.
+The admin can log in through the application and access the dashboard.
 
 ## Deployment
 
-### Services Required
+- **Frontend:** Deployed on Vercel.
+- **Backend:** Deployed on Render.
+- **Database:** MongoDB Atlas.
 
-- **MongoDB Atlas:** Create a cluster, database user, and configure Network Access.
-- **Cloudinary:** Obtain your cloud name, API key, and API secret.
-- **Gmail App Password:** Enable 2-Step Verification and generate an App Password for SMTP authentication.
+Live links:
 
-### 1. Backend Deployment — Render
+- **Frontend:** [BidBazaar](https://bidbazaar-drab.vercel.app/)
+- **Backend:** https://bidbazaar-api-u49p.onrender.com
+- **GitHub:** https://github.com/srishti831/BIDBAZAAR
 
-1. Create a new Web Service using this GitHub repository.
-2. Set the Root Directory to `backend`.
-3. Configure:
-   - Build command: `npm install`
-   - Start command: `npm start`
-   - Health check path: `/health`
-4. Add the required environment variables from the backend configuration.
-5. Set `NODE_ENV=production`.
-6. Set `FRONTEND_URL` to your deployed frontend's exact origin.
-7. Generate a new, strong `JWT_SECRET_KEY`.
-8. Deploy the service.
+## Testing
 
-Create the Super Admin once using Render Shell or locally connected to the same MongoDB database.
-
-**Important:** Render's free tier may sleep after inactivity. Background cron jobs only execute while the backend service is running. For reliable auction closing and winner notifications, use an always-on service.
-
-### 2. Frontend Deployment — Vercel or Netlify
-
-1. Import the GitHub repository.
-2. Set Root Directory to `frontend`.
-3. Select Vite as the framework preset.
-4. Configure the environment variable:
-
-```env
-VITE_API_URL=https://your-render-service.onrender.com/api/v1
-```
-
-5. Deploy the frontend.
-
-The existing `vercel.json` and `public/_redirects` files handle client-side routing.
-
-After deployment, update `FRONTEND_URL` in Render to match the final frontend URL exactly.
-
-### Authentication in Production
-
-The API uses an HttpOnly cookie with `SameSite=None; Secure` and the frontend also sends the JWT through a Bearer authorization header.
-
-For a more robust production setup, use a custom domain with both applications under the same parent domain, for example:
-
-- `app.example.com`
-- `api.example.com`
-
-## API Overview
-
-Base URL: `/api/v1`
-
-| Module | Endpoints / Functionality |
-|---|---|
-| User | Register, login, profile, payout details, password update, logout, leaderboard, watchlist |
-| Auction Item | Create, list all, view auction, view own items, delete, republish |
-| Bid | Place bid, view own bids |
-| Commission | Submit payment proof, view own commission |
-| Super Admin | Dashboard statistics, payment proofs, user graphs, monthly income, delete auctions |
-| Health | `GET /health` |
-
-## Tests
-
-Run backend tests:
+Backend tests can be run using:
 
 ```bash
 cd backend
 npm test
 ```
 
-The test suite runs 20 scenarios against bidding and republishing workflows using an in-memory MongoDB stand-in.
+The tests cover bidding rules, anti-sniping logic, auction settlement scenarios, and related functionality.
 
-Scenarios cover:
+## Author
 
-- Bid increments
-- Anti-sniping logic
-- Race conditions
-- Auction settlement rules
+**Srishti Singh**
 
-## Business rules (as implemented)
+B.Tech – Computer Science and Engineering  
+Motilal Nehru National Institute of Technology Allahabad
 
-- A seller can run up to **2** upcoming/live auctions at once.
-- Commission is 5% of the winning bid, added when the auction ends. Until it is paid and approved, the seller cannot list new items; after **7 days** unpaid, the seller also cannot bid.
-- Items that received bids count as **sold** and cannot be deleted or republished (so commission cannot be erased). Items with no bids can be republished free.
-- Two bids at the same moment: the database accepts only one write that still sees the old price; the other user gets "someone else bid first" and must bid again. Same amount twice is impossible - the later one is below the new minimum.
-- If the server was asleep and missed the cron, the first visitor browsing auctions triggers settlement.
-- `DEMO_MODE=true` (default) shows dummy UPI/bank details and a Demo notice. Set `DEMO_MODE=false` and enter real details in the admin Dashboard for real use.
-
-## Known limitations (documented on purpose)
-
-This is a demo/portfolio project. For production these would be next:
-
-- JWT is also kept in `localStorage` (for Safari/cross-site cookies). Production: same parent domain + HttpOnly cookie only.
-- No email verification or password reset; fake accounts can shill-bid.
-- No strike system for winners who never pay; commission is an honour system (payments happen off-platform). Production: Razorpay/UPI with escrow.
-- Commission is one running balance (no per-sale ledger); money is stored as floating numbers (use integer paise in production).
-- Settlement is not wrapped in a DB transaction; a server crash in the middle of settling one auction could leave it half-processed.
-- Rate limiter is in-memory (single instance only); auction list is capped at 300 items instead of full pagination; polling instead of websockets.
-- No auto-bid, reserve price or ratings.
-
-## License
-
-This project is available on GitHub:
-
-[BidBazaar — GitHub Repository](https://github.com/srishti831/BIDBAZAAR)
+[GitHub](https://github.com/srishti831)
